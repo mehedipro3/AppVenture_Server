@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-<<<<<<< HEAD
     "start": "Index.js",
-=======
     "start": "nodemon Index.js",
->>>>>>> 402d9a7 (Initial commit)
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
