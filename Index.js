@@ -12,7 +12,6 @@ app.use(express.json());
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ee44r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -23,7 +22,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
     const userCollection = client.db("appVenture").collection("users");
@@ -80,12 +78,67 @@ async function run() {
       res.send(result);
     });
 
+    // Voting route
+    app.patch("/products/:id/vote", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { userEmail } = req.body;
+
+        const product = await productsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!product)
+          return res
+            .status(404)
+            .send({ success: false, message: "Product not found" });
+
+        // check if already voted
+        if (product.votedUsers?.includes(userEmail)) {
+          return res.send({ success: false, message: "You already voted" });
+        }
+
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $inc: { votes: 1 },
+            $push: { votedUsers: userEmail },
+          }
+        );
+
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+
+    // eviews route
+    app.post("/products/:id/reviews", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { rating, comment, user } = req.body;
+        const review = { rating, comment, user, date: new Date() };
+
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $push: { reviews: review } }
+        );
+
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+
     // contactUs
     app.post("/contactUs", async (req, res) => {
       const user = req.body;
       const result = await contactUsCollection.insertOne(user);
       res.send(result);
     });
+
     // comments
     app.post("/comments", async (req, res) => {
       const user = req.body;
