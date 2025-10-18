@@ -88,6 +88,22 @@ async function run() {
       res.send({ admin });
     });
 
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email });
+      res.send(user);
+    });
+
+    app.patch("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const updatedInfo = req.body;
+      const result = await userCollection.updateOne(
+        { email },
+        { $set: updatedInfo }
+      );
+      res.send(result);
+    });
+
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
@@ -139,9 +155,26 @@ async function run() {
       res.send(result);
     });
 
-     app.post("/products", async (req, res) => {
+    app.post("/products", async (req, res) => {
       const product = req.body;
       const result = await productsCollection.insertOne(product);
+      res.send(result);
+    });
+
+    // Get products by a specific user
+    app.get("/products/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const products = await productsCollection
+        .find({ ownerEmail: email })
+        .toArray();
+      res.send(products);
+    });
+
+    // Delete a product
+    app.delete("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await productsCollection.deleteOne(query);
       res.send(result);
     });
 
