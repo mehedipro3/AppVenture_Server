@@ -41,20 +41,20 @@ async function run() {
 
     // middlewares
 
-    // const verifyToken = (req, res, next) => {
-    //   console.log("Insider Verify Token", req.headers.authorization);
-    //   if (!req.headers.authorization) {
-    //     return res.status(401).send({ message: "unauthorized  access" });
-    //   }
-    //   const token = req.headers.authorization.split(" ")[1];
-    //   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    //     if (err) {
-    //       return res.status(401).send({ message: "unauthorized access" });
-    //     }
-    //     req.decoded = decoded;
-    //     next();
-    //   });
-    // };
+    const verifyToken = (req, res, next) => {
+      console.log("Insider Verify Token", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized  access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
 
     // verifyAdmin
     const verifyAdmin = async (req, res, next) => {
@@ -165,16 +165,78 @@ async function run() {
     app.get("/products/user/:email", async (req, res) => {
       const email = req.params.email;
       const products = await productsCollection
-        .find({ ownerEmail: email })
+        .find({ "owner.email": email })
         .toArray();
       res.send(products);
     });
 
     // Delete a product
     app.delete("/products/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await productsCollection.deleteOne(query);
+
+        if (result.deletedCount > 0) {
+          res.send({ success: true, message: "Product deleted successfully" });
+        } else {
+          res.send({ success: false, message: "Product not found" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error deleting product" });
+      }
+    });
+
+    // ✅ Update product information
+    app.patch("/products/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updateData = req.body;
+        const filter = { _id: new ObjectId(id) };
+
+        const updateDoc = {
+          $set: {
+            name: updateData.name,
+            tagline: updateData.tagline,
+            description: updateData.description,
+            image: updateData.image,
+            category: updateData.category,
+            tags: updateData.tags,
+            website: updateData.website,
+            github: updateData.github,
+            pricing: updateData.pricing,
+            timestamp: new Date(),
+          },
+        };
+
+        const result = await productsCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error updating product" });
+      }
+    });
+
+    // Update product status (Accept/Reject)
+    app.patch("/products/:id/status", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await productsCollection.deleteOne(query);
+      const { status } = req.body;
+      const result = await productsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status } }
+      );
+      res.send(result);
+    });
+
+    // Make product featured
+    app.patch("/products/:id/featured", async (req, res) => {
+      const id = req.params.id;
+      const { featured } = req.body;
+      const result = await productsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { featured } }
+      );
       res.send(result);
     });
 
