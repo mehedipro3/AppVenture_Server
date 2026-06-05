@@ -20,14 +20,24 @@ const client = new MongoClient(uri, {
   },
 });
 
+// Collections will be assigned after DB connection so routes can
+// gracefully handle missing DB during startup.
+let userCollection;
+let productsCollection;
+let contactUsCollection;
+let commentsCollection;
+let reportedCollection;
+
 async function run() {
   try {
     await client.connect();
 
-    const userCollection = client.db("appVenture").collection("users");
-    const productsCollection = client.db("appVenture").collection("products");
-    const contactUsCollection = client.db("appVenture").collection("contactUs");
-    const commentsCollection = client.db("appVenture").collection("comments");
+    userCollection = client.db("appVenture").collection("users");
+    productsCollection = client.db("appVenture").collection("products");
+    contactUsCollection = client.db("appVenture").collection("contactUs");
+    commentsCollection = client.db("appVenture").collection("comments");
+    // reportedCollection name assumed as 'reportedProducts'
+    reportedCollection = client.db("appVenture").collection("reportedProducts");
 
     //jwt related API
 
@@ -84,6 +94,10 @@ async function run() {
 
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
+
+      if (!req.decoded) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
 
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
@@ -150,6 +164,9 @@ async function run() {
     //Products
 
     app.get("/products", async (req, res) => {
+      if (!productsCollection) {
+        return res.status(503).send({ message: "Database not connected" });
+      }
       const result = await productsCollection.find().toArray();
       res.send(result);
     });
@@ -322,19 +339,19 @@ async function run() {
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Connected to MongoDB!");
+
+    // Base route
+    app.get("/", (req, res) => {
+      res.send("AppVenture Server is Running....");
+    });
+
+    // Start server
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     //await client.close();
   }
 }
 run().catch(console.dir);
-
-// Base route
-app.get("/", (req, res) => {
-  res.send("AppVenture Server is Running....");
-});
-
-// Start server
-app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
-});
