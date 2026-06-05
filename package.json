@@ -1,12 +1,12 @@
 {
   "name": "appventure_server",
   "version": "1.0.0",
-  "main": "Index.js",
+  "main": "index.js",
   "engines": {
     "node": "22.x"
   },
   "scripts": {
-    "start": "node Index.js",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
